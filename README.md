@@ -151,9 +151,3 @@ Finance Copilot
 ├── setup.py
 └── requirements.txt
 ```
-
----
-
-## Disclaimer
-
-**Disclaimer**: The code and documentation provided herein are released under the Apache-2.0 license. They should not be construed as financial counsel or recommendations for live trading. It is imperative to exercise caution and consult with qualified financial professionals prior to any trading or investment actions.

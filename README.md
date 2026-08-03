@@ -1,7 +1,6 @@
 # Finance Copilot
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 **Finance Copilot** is an open-source AI Agent platform tailored for financial applications. It unifies multiple AI technologies—including Large Language Models (LLMs), reinforcement learning, and quantitative analytics—to power investment research automation, algorithmic trading strategies, and risk assessment, delivering a full-stack intelligent solution for the financial industry.
 

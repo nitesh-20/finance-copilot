@@ -20,13 +20,26 @@ if os.path.exists(dotenv_path):
                 v = v.strip().strip('"').strip("'")
                 if v.startswith("${") and v.endswith("}"):
                     v = os.getenv(v[2:-1], "")
-                os.environ[k] = v
+                if k not in os.environ:
+                    os.environ[k] = v
 
 import getpass
 current_user = getpass.getuser()
 
 # Default to local PostgreSQL database, using pg8000 driver
 DATABASE_URL = os.environ.get("DATABASE_URL") or f"postgresql+pg8000://{current_user}@localhost/finance_copilot"
+
+# Normalize connection schemes and handle pg8000 sslmode compatibility
+if DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://"):
+    prefix = "postgresql://" if DATABASE_URL.startswith("postgresql://") else "postgres://"
+    DATABASE_URL = "postgresql+pg8000://" + DATABASE_URL[len(prefix):]
+
+if "pg8000" in DATABASE_URL:
+    if "?sslmode=require" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("?sslmode=require", "")
+    elif "&sslmode=require" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("&sslmode=require", "")
+
 DATABASE_PATH = None
 
 engine = create_engine(

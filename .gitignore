@@ -13,3 +13,5 @@ report/
 *.egg-info/
 get-pip.py
 
+.vercel
+.env*

@@ -29,10 +29,17 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CORE_ROOT = os.path.join(PROJECT_ROOT, "core")
 SRC_ROOT = CORE_ROOT  # SRC_ROOT points to core directory, scripts are in core/src
-OUTPUT_DIR = os.path.join(CORE_ROOT, "output")
 CONFIG_DIR = os.path.join(CORE_ROOT, "config")
-DATA_DIR = os.path.join(PROJECT_ROOT, "web_app", "data")
-LOGS_DIR = os.path.join(PROJECT_ROOT, "logs")  # 统一日志目录：finance_copilot_equity/logs/
+
+# Vercel serverless environment compatibility (using /tmp for write operations)
+if "VERCEL" in os.environ or os.environ.get("VERCEL"):
+    OUTPUT_DIR = "/tmp/output"
+    DATA_DIR = "/tmp/data"
+    LOGS_DIR = "/tmp/logs"
+else:
+    OUTPUT_DIR = os.path.join(CORE_ROOT, "output")
+    DATA_DIR = os.path.join(PROJECT_ROOT, "web_app", "data")
+    LOGS_DIR = os.path.join(PROJECT_ROOT, "logs")  # 统一日志目录：finance_copilot_equity/logs/
 
 # Ensure directories exist
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -561,6 +568,8 @@ def execute_analysis_pipeline(task_id: str, req: AnalysisRequest):
     prof_pdfs = [f for f in pdf_files if 'Professional_Equity_Report' in f]
     if not prof_pdfs:
         prof_pdfs = [f for f in pdf_files if 'Equity_Report' in f]
+    if not prof_pdfs:
+        prof_pdfs = [f"Professional_Equity_Report_{req.ticker}.pdf"]
     sorted_pdfs = prof_pdfs
     
     tasks[task_id]["result"] = {
@@ -569,6 +578,47 @@ def execute_analysis_pipeline(task_id: str, req: AnalysisRequest):
         "html": sorted_htmls,
         "pdf": sorted_pdfs
     }
+
+@app.get("/output/{ticker}/report/{filename}")
+def get_report_file(ticker: str, filename: str):
+    file_path = os.path.join(OUTPUT_DIR, ticker, "report", filename)
+    
+    # If PDF is requested but doesn't exist, generate it dynamically on-demand
+    if filename.endswith(".pdf") and not os.path.exists(file_path):
+        logger.info(f"PDF report not found at {file_path}. Generating dynamically...")
+        company_name = ticker
+        try:
+            db = SessionLocal()
+            req_db = db.query(ReportRequest).filter(ReportRequest.ticker == ticker).order_by(ReportRequest.created_at.desc()).first()
+            if req_db:
+                company_name = req_db.company_name
+            db.close()
+        except Exception as e:
+            logger.warning(f"Error fetching company name: {e}")
+            
+        python_exe = sys.executable
+        src_dir = os.path.join(SRC_ROOT, "src")
+        analysis_dir = os.path.join(OUTPUT_DIR, ticker, "analysis")
+        report_output_dir = os.path.join(OUTPUT_DIR, ticker, "report")
+        config_file = os.path.join(CONFIG_DIR, "config.ini")
+        
+        cmd_pdf = [
+            python_exe,
+            os.path.join(src_dir, "generate_pdf_report.py"),
+            "--company-ticker", ticker,
+            "--company-name", company_name,
+            "--analysis-dir", analysis_dir,
+            "--output-dir", report_output_dir,
+            "--config-file", config_file
+        ]
+        
+        logger.info(f"Running dynamic PDF compile: {' '.join(cmd_pdf)}")
+        subprocess.run(cmd_pdf, cwd=SRC_ROOT, check=False)
+        
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    else:
+        raise HTTPException(status_code=404, detail=f"File {filename} not found.")
 
 @app.post("/api/run")
 async def run_analysis(req: AnalysisRequest, request: Request, background_tasks: BackgroundTasks):

@@ -370,10 +370,11 @@ def run_process(command, task_id, cwd=None):
     """Run a shell command and capture output to the task logs."""
     logger.info(f"Task {task_id}: Running command: {' '.join(command)}")
     append_task_log(task_id, f"Executing: {' '.join(command)}")  # 修改：使用新函数
-    
     try:
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
+        # Forward python path to sub-process to access virtual environment packages on Vercel
+        env["PYTHONPATH"] = ":".join(sys.path)
         
         process = subprocess.Popen(
             command,

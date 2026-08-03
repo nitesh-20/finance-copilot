@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: finance-copilot
+    env: docker
+    plan: free
+    port: 8001
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: finance-copilot-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FMP_API_KEY
+        sync: false
+      - key: SEC_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: PORT
+        value: 8001
+
+databases:
+  - name: finance-copilot-db
+    plan: free

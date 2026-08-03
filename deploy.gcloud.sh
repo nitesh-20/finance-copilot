@@ -12,8 +12,18 @@
 #
 set -euo pipefail
 
-# ── Configuration ────────────────────────────────────────────────────────────
+# Auto-detect active GCP project if placeholder is unchanged
+ACTIVE_PROJECT=$(gcloud config get-value project 2>/dev/null || echo "")
 PROJECT_ID="your-project-id"
+if [ "${PROJECT_ID}" = "your-project-id" ] || [ -z "${PROJECT_ID}" ]; then
+    if [ -n "${ACTIVE_PROJECT}" ] && [ "${ACTIVE_PROJECT}" != "(unset)" ]; then
+        PROJECT_ID="${ACTIVE_PROJECT}"
+    else
+        echo "ERROR: Please set your active GCP project ID using 'gcloud config set project <PROJECT_ID>' first, or edit deploy.gcloud.sh to define PROJECT_ID."
+        exit 1
+    fi
+fi
+
 REGION="us-central1"
 SERVICE_NAME="finance_copilot-equity"
 REPO_NAME="finance_copilot"                         # Artifact Registry repository

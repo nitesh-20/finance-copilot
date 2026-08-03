@@ -787,6 +787,21 @@ async def get_history(request: Request):
                 prof_pdf = [f for f in all_files if f.endswith('.pdf') and 'Professional_Equity_Report' in f]
                 other_pdf = [f for f in all_files if f.endswith('.pdf') and 'Equity_Report' in f and f not in prof_pdf] if not prof_pdf else []
                 pdf_files = prof_pdf + other_pdf
+                if not pdf_files:
+                    pdf_files = [f"Professional_Equity_Report_{r.ticker}.pdf"]
+                if not html_files:
+                    html_files = [f"Professional_Equity_Report_{r.ticker}.html"]
+            else:
+                pdf_files = [f"Professional_Equity_Report_{r.ticker}.pdf"]
+                html_files = [f"Professional_Equity_Report_{r.ticker}.html"]
+                
+            res_obj = {
+                "report_dir": report_dir,
+                "ticker": r.ticker,
+                "html": html_files,
+                "pdf": pdf_files
+            }
+            
             result.append({
                 "task_id": r.task_id,
                 "ticker": r.ticker,
@@ -795,6 +810,7 @@ async def get_history(request: Request):
                 "created_at": r.created_at.isoformat() if r.created_at else None,
                 "html": html_files,
                 "pdf": pdf_files,
+                "result": res_obj
             })
         db.close()
         return result

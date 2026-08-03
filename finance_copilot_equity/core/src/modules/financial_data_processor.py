@@ -71,34 +71,44 @@ def extract_historical_metrics_from_api_data(financial_data: dict) -> pd.DataFra
         year_value = row['year']
         
         # Extract basic metrics from income statement
-        # Try multiple field names as FMP API can use different naming conventions
-        revenue = (row.get('revenue') or 
-                  row.get('totalRevenue') or 
-                  row.get('netSales') or 
-                  row.get('totalNetSales'))
+        def _to_scalar(val):
+            if val is None:
+                return None
+            if hasattr(val, 'empty') and val.empty:
+                return None
+            if hasattr(val, 'iloc'):
+                val = val.iloc[0] if len(val) > 0 else None
+            try:
+                return float(val) if pd.notna(val) else None
+            except (ValueError, TypeError):
+                return val if pd.notna(val) else None
+
+        revenue = _to_scalar(row.get('revenue') or 
+                   row.get('totalRevenue') or 
+                   row.get('netSales') or 
+                   row.get('totalNetSales'))
         
-        cost_of_revenue = (row.get('costOfRevenue') or 
-                          row.get('costOfGoodsSold') or 
-                          row.get('totalCostOfSales'))
+        cost_of_revenue = _to_scalar(row.get('costOfRevenue') or 
+                           row.get('costOfGoodsSold') or 
+                           row.get('totalCostOfSales'))
         
-        gross_profit = row.get('grossProfit')
-        operating_expenses = row.get('operatingExpenses')
+        gross_profit = _to_scalar(row.get('grossProfit'))
+        operating_expenses = _to_scalar(row.get('operatingExpenses'))
         
-        selling_general_admin = (row.get('sellingGeneralAndAdministrativeExpenses') or 
+        selling_general_admin = _to_scalar(row.get('sellingGeneralAndAdministrativeExpenses') or 
                                row.get('sellingAndMarketingExpenses') or
                                row.get('sellingGeneralAdministrative'))
         
-        ebitda = row.get('ebitda')
+        ebitda = _to_scalar(row.get('ebitda'))
         
-        # Extract EPS from income statement
-        eps = (row.get('eps') or 
+        eps = _to_scalar(row.get('eps') or 
                row.get('epsdiluted') or 
                row.get('netIncomePerShare'))
         
         # Calculate derived metrics if not directly available
-        if revenue and cost_of_revenue:
+        if revenue is not None and cost_of_revenue is not None:
             contribution_profit = revenue - cost_of_revenue
-        elif gross_profit:
+        elif gross_profit is not None:
             contribution_profit = gross_profit
         else:
             contribution_profit = None
@@ -106,22 +116,22 @@ def extract_historical_metrics_from_api_data(financial_data: dict) -> pd.DataFra
         # Store basic metrics
         metrics_idx = {metric: idx for idx, metric in enumerate(output_metrics_order)}
         
-        if revenue:
+        if revenue is not None:
             final_data_dict[year_label][metrics_idx['Revenue']] = revenue
             
-        if cost_of_revenue:
+        if cost_of_revenue is not None:
             final_data_dict[year_label][metrics_idx['Cost of Operations']] = cost_of_revenue
             
-        if selling_general_admin:
+        if selling_general_admin is not None:
             final_data_dict[year_label][metrics_idx['SG&A']] = selling_general_admin
             
-        if contribution_profit:
+        if contribution_profit is not None:
             final_data_dict[year_label][metrics_idx['Contribution Profit']] = contribution_profit
             
-        if ebitda:
+        if ebitda is not None:
             final_data_dict[year_label][metrics_idx['EBITDA']] = ebitda
             
-        if eps:
+        if eps is not None:
             final_data_dict[year_label][metrics_idx['EPS']] = eps
         
         # Extract PE Ratio from ratios or key_metrics if available
